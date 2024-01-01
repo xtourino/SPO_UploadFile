@@ -1,0 +1,51 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+steps:
+# Clone the Bitbucket repository
+- script: |
+    git clone https://username:password@bitbucket.org/your_project/your_repo.git
+  displayName: 'Clone Bitbucket repository'
+  continueOnError: true  # This will allow the pipeline to continue even if this step fails
+
+# Set the Python version
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8'
+    addToPath: true
+
+# Create a virtual environment
+- script: |
+    python -m venv env
+  displayName: 'Create virtual environment'
+  continueOnError: true
+
+# Install the dependencies
+- script: |
+    source env/bin/activate
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+  displayName: 'Install dependencies'
+  continueOnError: true
+
+# Run the unit tests
+- script: |
+    python -m unittest discover -s tests
+  displayName: 'Run unit tests'
+  continueOnError: false  # If the unit tests fail, the pipeline will stop
+
+# Publish the test results
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFiles: '**/test-results.xml'
+    testRunTitle: 'Python unittests'
+
+# Deploy to network drive
+- script: |
+    cp -r $(Build.Repository.LocalPath) //change_to_network_drive_patH
+  displayName: 'Deploy to network drive'
+  condition: succeeded()  # This step will only run if all previous steps were successful
